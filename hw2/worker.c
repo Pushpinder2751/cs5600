@@ -5,48 +5,50 @@
 #include <sys/types.h>
 #include <math.h>
 
-int factorial(int n);
-float power(float x, int y);
+double factorial(double n);
+double power(double x, double y);
 
 int main(int argc, char *argv[])
 {
-    float x= 0;
-    float n= 0;
+     double x= 0;
+     double n= 0;
     int opt;
     while((opt = getopt(argc, argv, "x:n:")) != -1)
     {
         switch(opt)
         {
             case 'x':
-                x = atof(optarg);
+                x = atol(optarg);
                 break;
             case 'n':
-                n = atof(optarg);
+                n = atol(optarg);
                 break;
             default:
                 printf("wrong arguments");
         }
     }
     //printf("x = %.4f , n = %.4f \n", x, n);
-    float result = power(x,n)/factorial((int)n);
-    printf("%f", result);
+    double result = (power(x,n)) / (factorial(n));
+    printf("%lf", result);
 
 
 }
 
-int factorial(int n)
+double factorial(double n)
 {
-    if(n != 1)
+    if(n == 0)
+        return 1;
+    else
         return n*factorial(n-1);
 }
 
-float power(float x, int y)
+double power(double x, double y)
 {
-    float temp;
+    double temp;
     if( y == 0)
        return 1;
     temp = power(x, y/2);
-    if (y%2 == 0)
+    if ((int)y%2 == 0)
         return temp*temp;
     else
     {
