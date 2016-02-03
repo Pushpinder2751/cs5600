@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
     }
     //printf("x = %.4f , n = %.4f \n", x, n);
     float result = power(x,n)/factorial((int)n);
-    printf("%.4f \n", result);
+    printf("%f", result);
 
 
 }

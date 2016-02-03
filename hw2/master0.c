@@ -18,6 +18,7 @@ int main(int argc, char *argv[])
         //printf("x = %.4f , n = %.4f \n", x, n);
 
         //fd for pid
+        // 10 will have to be have to be changed according to n
         int fd[2];
         char my_value[6];
 
@@ -49,12 +50,13 @@ int main(int argc, char *argv[])
                 dup2(fd[1], 1);
                 // How to use exec()
                 execl("worker", "worker","-n", argv[n], "-x", argv[x], NULL);
-                // this will not execute if execl us used.
+                // this will not execute if execl is used.
                 // prinf("excel did not work \n");
                 //my_value = 10;
                 //write to the pipe
                 //write(fd[1], &my_value, sizeof(my_value ));
-                close(fd[1]); // closing write/output in pipe as well
+                close(fd[1]); // closing write/output in pipe as
+                exit(0);
         }
         else  // parent goes down this path
         {
@@ -67,7 +69,9 @@ int main(int argc, char *argv[])
                 printf("Hello, I am parent of %d (wc: %d) (pid:%d)\n", childpid, wc, (int)getpid());
                 //reading value fromthe executed process
                 read(fd[0], &my_value, sizeof(my_value));
+
                 printf("I read value from my child as : %s \n",my_value);
+
                 float x = atof(my_value);
                 printf("My Float : %.4f\n", x);
                 //closing the read/input side of pipe as well
