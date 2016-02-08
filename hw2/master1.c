@@ -21,7 +21,9 @@ fd_set fds;
 // flags for wait_mechanism
 bool sequential, select_flag, poll_flag,epoll_flag;
 
-
+// I want to know the reason why i have to keep it here instead of main
+// as I get the bus error otherwise.
+int worker_path;
 
 
 // this is the structure for select();
@@ -32,14 +34,13 @@ char my_value[6];
 
 int main(int argc, char *argv[])
 {
-        epoll_flag = true;
+        //sequential = true;
         FD_ZERO(&fds);
-        int x, n, worker_path;
+        int x, n;
         struct pollfd poll_number[(int)n];
 
         struct epoll_event ev[(int)n];
-        int epollfd;
-        epollfd = epoll_create((int)n);
+        int epollfd = epoll_create((int)n);
         if(epollfd == -1)
         {
             perror("epoll_create");
@@ -47,7 +48,7 @@ int main(int argc, char *argv[])
         }
 
 
-
+        printf("No. of arguements : %d\n", argc);
         // pulling out essentials form argv, ideally need to use getopt(),
         // but don't know how to do that.
         for(int i = 1;i < argc; i++)
@@ -56,12 +57,18 @@ int main(int argc, char *argv[])
                 x = atoi(argv[i+1]);
             else if(strcmp(argv[i],"-n") == 0)
                 n = atoi(argv[i+1]);
-            //else if(strcmp("--worker_path",argv[i]) == 0)
-            //    worker_path = i + 1;
-            //else if(strcmp(argv[i], "--wait_mechanism" ) == 0)
-            //    set_mechanism_flag(argv[i+1]);
-
+            else if(strcmp(argv[i], "--wait_mechanism" ) == 0)
+            {
+                 set_mechanism_flag(argv[i+1]);
+                 printf("wait_mechanism : %s\n", argv[i+1]);
+            }
+            else if(strcmp("--worker_path",argv[i]) == 0)
+            {
+                worker_path = i + 1;
+                printf("path of worker: %s\n", argv[i+1]);
+            }
         }
+
         printf("x = %d , n = %d \n", x, n);
         char char_x[24] = {0x0}, char_n[24] = {0x0};
         sprintf(char_x, "%d", x);
@@ -118,7 +125,7 @@ int main(int argc, char *argv[])
 
                         sprintf(char_n,"%d", i);
                         // How to use exec()
-                        execl("worker","worker","-n", char_n, "-x", char_x, NULL);
+                        execl(argv[worker_path],"worker","-n", char_n, "-x", char_x, NULL);
                         // this will not execute if execl is used.
                         // prinf("excel did not work \n");
                         //my_value = 10;
@@ -218,7 +225,8 @@ int main(int argc, char *argv[])
             for(;;)
             {
                 printf("child process : %d\n", child_process);
-                if(!child_process)
+                fflush(stdout);
+                if(child_process <= 0)
                     break;
 
                 int e = epoll_wait(epollfd, ev, n+1, 0);
@@ -242,14 +250,14 @@ int main(int argc, char *argv[])
                         }
                     }
 
+                }
             }
         }
-
 return 0;
-    }
+
 
 }
-
+// not perfect ; need to understand select again
 void compute_by_select(int n, int fd[][2])
 {
         printf("Usnig select\n");
@@ -260,7 +268,7 @@ void compute_by_select(int n, int fd[][2])
         {
             printf("child_process %d\n", child_process);
             fflush(stdout);
-            if(!child_process)
+            if(child_process <= 0)
                 break;
 
 
@@ -284,11 +292,14 @@ void compute_by_select(int n, int fd[][2])
                         {   printf("fd is set%d \n", sd);
                             read(sd, &my_value, sizeof(my_value));
                             final_calculation();
-                            FD_CLR(sd, &fds);
+                            FD_ZERO(&fds);
+                            for(int i = 0;i<=n;i++)
+                                FD_SET(fd[i][0], &fds);
+                            //FD_CLR(sd, &fds);
                             child_process--;
-                        }else{   printf("fd is  not set%d \n", sd);
-                                FD_SET(sd, &fds);
-                            }
+                        }//else{   printf("fd is  not set%d \n", sd);
+                            //    FD_SET(sd, &fds);
+                            //}
 
                     }
 
