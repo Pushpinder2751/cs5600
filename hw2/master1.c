@@ -10,17 +10,16 @@
 #include <sys/epoll.h>
 
 
-
 void final_calculation();
 void compute_by_select(int n, int fd[][2]);
 void set_mechanism_flag(char flag[]);
+int max_array(int p[][2], int num_elements);
 // have declared the variables here as if I declare them
 // inside main, throws an error of 'Use them first'
 fd_set fds;
 
 // flags for wait_mechanism
 bool sequential, select_flag, poll_flag,epoll_flag;
-
 // I want to know the reason why i have to keep it here instead of main
 // as I get the bus error otherwise.
 int worker_path;
@@ -30,7 +29,7 @@ int worker_path;
 struct timeval tv = {.tv_sec = 5, .tv_usec = 0};
 
 double e_x=0;
-char my_value[6];
+char my_value[8];
 
 int main(int argc, char *argv[])
 {
@@ -265,12 +264,15 @@ void compute_by_select(int n, int fd[][2])
             if(child_process <= 0)
                 break;
 
+            FD_ZERO(&fds);
+            for(int i = 0; i <= n; i++)
+                FD_SET(fd[i][0], &fds);
 
-            //for(int i= 0;i<=n;i++)
-            //{
-            //        FD_SET(fd[i][0], &fds);
-            //}
-            int select_no = select(FD_SETSIZE, &fds, NULL, NULL, &tv);
+            // the first arguement should be the max +1 of the highest
+            // file descriptors
+            int max_fd = max_array(fd, n)+1;
+            printf("max_fd : %d\n", max_fd);
+            int select_no = select(max_fd, &fds, NULL, NULL, &tv);
             //printf("select_no : %d\n", select_no);
 
                 // how to know what file descriptors are ready
@@ -279,23 +281,27 @@ void compute_by_select(int n, int fd[][2])
                 // this works but I still do not understand select properly
 
                     int sd;
-                    for(int i =0;i<= n; i++)
+                    printf("n: %d\n", n);
+                    for(int i = 0;i <=  n; i++)
                     {
                         sd = fd[i][0];
-                        if((FD_ISSET(sd, &fds)))
-                        {   printf("fd is set%d \n", sd);
+                        if(sd == -1)
+                        {}
+                        else if((FD_ISSET(sd, &fds)))
+                        {
+                            printf("i is :%d \n", i);
                             read(sd, &my_value, sizeof(my_value));
                             final_calculation();
-                            FD_ZERO(&fds);
-                            for(int i = 0;i<=n;i++)
-                                FD_SET(fd[i][0], &fds);
+
+                            fd[i][0] = -1;
+
+                            // Is there a point of doing this?
                             //FD_CLR(sd, &fds);
                             child_process--;
-                        }//else{   printf("fd is  not set%d \n", sd);
-                            //    FD_SET(sd, &fds);
-                            //}
+                        }
 
                     }
+
 
 
             }
@@ -325,4 +331,17 @@ void final_calculation()
     printf("My Float : %.4f\n", x);
     e_x += x;
     printf("updated e_x functin %.4lf \n", e_x);
+}
+
+int max_array(int p[][2], int num_elements)
+{
+   int i, max=-32000;
+   for (i=0; i<num_elements; i++)
+   {
+	 if (p[i][0]>max)
+	 {
+	    max=p[i][0];
+	 }
+   }
+   return(max);
 }
