@@ -11,7 +11,7 @@
 
 
 
-double final_calculation();
+void final_calculation();
 void compute_by_select(int n, int fd[][2]);
 void set_mechanism_flag(char flag[]);
 // have declared the variables here as if I declare them
@@ -34,19 +34,10 @@ char my_value[6];
 
 int main(int argc, char *argv[])
 {
+        int x, n;
+
         //sequential = true;
         FD_ZERO(&fds);
-        int x, n;
-        struct pollfd poll_number[(int)n];
-
-        struct epoll_event ev[(int)n];
-        int epollfd = epoll_create((int)n);
-        if(epollfd == -1)
-        {
-            perror("epoll_create");
-            exit(EXIT_FAILURE);
-        }
-
 
         printf("No. of arguements : %d\n", argc);
         // pulling out essentials form argv, ideally need to use getopt(),
@@ -68,18 +59,21 @@ int main(int argc, char *argv[])
                 printf("path of worker: %s\n", argv[i+1]);
             }
         }
+        // this needs to be here, after the n gets it value
+        struct pollfd poll_number[(int)n];
+        struct epoll_event ev[n];
+        int epollfd = epoll_create(n);
+        if(epollfd == -1)
+        {
+            perror("epoll_create");
+            exit(EXIT_FAILURE);
+        }
 
         printf("x = %d , n = %d \n", x, n);
-        char char_x[24] = {0x0}, char_n[24] = {0x0};
+        char char_x[24] = {0};
+	char char_n[24] = {0};
+
         sprintf(char_x, "%d", x);
-
-
-
-
-        int return_value;
-
-
-
 
         //fd for pid
         // 10 will have to be have to be changed according to n
@@ -238,7 +232,7 @@ int main(int argc, char *argv[])
 
                 for(int i =0;i <= n; i++)
                 {
-                    if(ev[i].events & EPOLLIN != 0)
+                    if((ev[i].events & EPOLLIN) != 0)
                     {
                         if(read(ev[i].data.fd, my_value, sizeof(my_value) ) == -1)
                             perror("while reading");
@@ -325,7 +319,7 @@ void set_mechanism_flag(char flag[])
     printf("flag : %s\n", flag);
 }
 
-double final_calculation()
+void final_calculation()
 {
     double x = atof(my_value);
     printf("My Float : %.4f\n", x);
