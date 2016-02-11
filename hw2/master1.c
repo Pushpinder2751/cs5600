@@ -95,9 +95,10 @@ int main(int argc, char *argv[])
                         exit(EXIT_FAILURE);
                 }
 
-                printf("i is : %d\n", i);
-                printf("hello world, Parent : (pid:%d)\n", (int)getpid());
-                fflush(stdout);
+                // for debugging, add if needed
+                // printf("i is : %d\n", i);
+                // printf("hello world, Parent : (pid:%d)\n", (int)getpid());
+                // fflush(stdout);
                 // forking for each child
                 childpid[i] = fork();
                 fflush(stdout);
@@ -139,7 +140,7 @@ int main(int argc, char *argv[])
                                 // waiting for the child to finish
                                 // This is the sequential method.
                                 int wc = wait(NULL);
-                                printf("Hello, I am parent of %d (wc: %d) (pid:%d)\n", childpid[i],wc, (int)getpid());
+                                //printf("Hello, I am parent of %d (wc: %d) (pid:%d)\n", childpid[i],wc, (int)getpid());
 
                                 //reading value fromthe executed process
                                 read(fd[i][0], &my_value, sizeof(my_value));
@@ -187,7 +188,7 @@ int main(int argc, char *argv[])
 
         if(select_flag)
         {
-            printf("Bug1 \n");
+            //printf("Bug1 \n");
             compute_by_select(n, fd);
         }
         else if (poll_flag)
@@ -284,12 +285,12 @@ void compute_by_select(int n, int fd[][2])
             // the first arguement should be the max +1 of the highest
             // file descriptors
             int max_fd = max_array(fd, n)+1;
-            printf("max_fd : %d\n", max_fd);
+            //printf("max_fd : %d\n", max_fd);
             int select_no = select(max_fd, &fds, NULL, NULL, &tv);
             //printf("select_no : %d\n", select_no);
 
                 // how to know what file descriptors are ready
-                printf("Number of Fds ready1 : %d \n ", select_no);
+                //printf("Number of Fds ready1 : %d \n ", select_no);
 
                 // this works but I still do not understand select properly
 
@@ -319,7 +320,7 @@ void compute_by_select(int n, int fd[][2])
 
             }
 }
-
+// sets correct flags
 void set_mechanism_flag(char flag[])
 {
     if(strcmp(flag, "sequential") == 0)
@@ -337,7 +338,7 @@ void set_mechanism_flag(char flag[])
         }
     printf("flag : %s\n", flag);
 }
-
+// does the final additions
 void final_calculation(int i)
 {
     double x = atof(my_value);
