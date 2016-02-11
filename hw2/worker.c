@@ -10,8 +10,8 @@ double power(double x, double y);
 
 int main(int argc, char *argv[])
 {
-     double x= 0;
-     double n= 0;
+     long x= 0;
+     int n= 0;
     int opt;
     while((opt = getopt(argc, argv, "x:n:")) != -1)
     {
@@ -29,7 +29,13 @@ int main(int argc, char *argv[])
     }
     //printf("x = %.4f , n = %.4f \n", x, n);
     double result = (power(x,n)) / (factorial(n));
-    printf("%lf", result);
+    if(!isatty(fileno(stdout)))
+    {
+        printf("%lf", result);
+        fprintf(stderr, "Worker: %d, result: %lf\n", n, result);
+    }
+    else
+        printf("Worker: %d, result, x^n : %lf\n", n, result);
 
 
 }

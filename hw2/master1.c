@@ -10,7 +10,7 @@
 #include <sys/epoll.h>
 
 
-void final_calculation();
+void final_calculation(int i);
 void compute_by_select(int n, int fd[][2]);
 void set_mechanism_flag(char flag[]);
 int max_array(int p[][2], int num_elements);
@@ -59,8 +59,10 @@ int main(int argc, char *argv[])
             }
         }
         // this needs to be here, after the n gets it value
+        // this is for poll
         struct pollfd poll_number[(int)n];
-        struct epoll_event ev[n];
+        // this is for epoll
+        struct epoll_event event;
         int epollfd = epoll_create(n);
         if(epollfd == -1)
         {
@@ -70,7 +72,7 @@ int main(int argc, char *argv[])
 
         printf("x = %d , n = %d \n", x, n);
         char char_x[24] = {0};
-	char char_n[24] = {0};
+	    char char_n[24] = {0};
 
         sprintf(char_x, "%d", x);
 
@@ -82,7 +84,7 @@ int main(int argc, char *argv[])
         // child_no is to be updated to the value of n
         pid_t childpid[child_no];
 
-        for(int i = 0;i <= child_no; i++)
+        for(int i = 0;i < child_no; i++)
             {
 
                 // check if pipe was created successfully
@@ -98,7 +100,6 @@ int main(int argc, char *argv[])
                 fflush(stdout);
                 // forking for each child
                 childpid[i] = fork();
-                printf("forked! \n");
                 fflush(stdout);
                 if(childpid[i] < 0) // fork failed; exit
                 {
@@ -120,10 +121,9 @@ int main(int argc, char *argv[])
                         // How to use exec()
                         execl(argv[worker_path],"worker","-n", char_n, "-x", char_x, NULL);
                         // this will not execute if execl is used.
-                        // prinf("excel did not work \n");
-                        //my_value = 10;
-                        //write to the pipe
-                        //write(fd[1], &my_value, sizeof(my_value ));
+                         printf("excel did not work \n");
+
+
                         close(fd[i][1]); // closing write/output in pipe as
                         exit(0);
                 }
@@ -144,8 +144,8 @@ int main(int argc, char *argv[])
                                 //reading value fromthe executed process
                                 read(fd[i][0], &my_value, sizeof(my_value));
 
-                                printf("I read value from my child as : %s \n",my_value);
-                                final_calculation();
+                                printf("I read value from my child no, %d: %s \n",i,my_value);
+                                final_calculation(i);
                                 //closing the read/input side of pipe as well
                                 close(fd[i][0]);
                             }
@@ -169,9 +169,10 @@ int main(int argc, char *argv[])
                         {
                             printf("E_Polling!\n");
 
-                            ev[i].events = EPOLLIN;
-                            ev[i].data.fd = fd[i][0];
-                            if(epoll_ctl(epollfd, EPOLL_CTL_ADD, fd[i][0], &ev[i]) == -1)
+                            event.data.fd = fd[i][0];
+                            event.events = EPOLLIN;
+
+                            if(epoll_ctl(epollfd, EPOLL_CTL_ADD, fd[i][0], &event) == -1)
                             {
                                 perror("epoll_ctl");
                                 exit(EXIT_FAILURE);
@@ -183,6 +184,7 @@ int main(int argc, char *argv[])
 
                 } // closing parent else
         } // closing for
+
         if(select_flag)
         {
             printf("Bug1 \n");
@@ -203,10 +205,10 @@ int main(int argc, char *argv[])
             else
             {
 
-                for(int i =0;i <= n; i++)
+                for(int i =0;i < n; i++)
                 {
                         read(poll_number[i].fd,my_value, sizeof(my_value) );
-                        final_calculation();
+                        final_calculation(i);
 
                 }
             }
@@ -214,6 +216,7 @@ int main(int argc, char *argv[])
 
         else if(epoll_flag)
         {
+            struct epoll_event events[n];
             int child_process = n;
             for(;;)
             {
@@ -222,25 +225,35 @@ int main(int argc, char *argv[])
                 if(child_process <= 0)
                     break;
 
-                int e = epoll_wait(epollfd, ev, n+1, 0);
+                int e = epoll_wait(epollfd, events, n+1, 1);
                 if(e == -1)
                 {
                     perror("epoll_pwait");
                     exit(EXIT_FAILURE);
                 }
 
-                for(int i =0;i <= n; i++)
+                for(int i =0;i < e; i++)
                 {
-                    if((ev[i].events & EPOLLIN) != 0)
+                    if((events[i].events & EPOLLIN) != 0)
                     {
-                        if(read(ev[i].data.fd, my_value, sizeof(my_value) ) == -1)
-                            perror("while reading");
-                        else
-                        {
-                            final_calculation();
-                            ev[i].data.fd = -1;
-                            child_process--;
-                        }
+
+                            if(read(events[i].data.fd, my_value, sizeof(my_value) ) == -1)
+                            {
+                                perror("while reading");
+                                //child_process--;
+                            }
+                            else
+                            {
+                                printf("reading for worker : %d\n", i);
+                                final_calculation(i);
+
+                                epoll_ctl(epollfd, EPOLL_CTL_DEL, events[i].data.fd, NULL);
+
+
+                                //close(ev[i].data.fd);
+                                child_process--;
+                            }
+
                     }
 
                 }
@@ -255,7 +268,7 @@ void compute_by_select(int n, int fd[][2])
 {
         printf("Usnig select\n");
         //int select_no = n;
-        int child_process = n+1;
+        int child_process = n;
         //printf()
         while(1)
         {
@@ -265,7 +278,7 @@ void compute_by_select(int n, int fd[][2])
                 break;
 
             FD_ZERO(&fds);
-            for(int i = 0; i <= n; i++)
+            for(int i = 0; i < n; i++)
                 FD_SET(fd[i][0], &fds);
 
             // the first arguement should be the max +1 of the highest
@@ -282,7 +295,7 @@ void compute_by_select(int n, int fd[][2])
 
                     int sd;
                     printf("n: %d\n", n);
-                    for(int i = 0;i <=  n; i++)
+                    for(int i = 0;i <  n; i++)
                     {
                         sd = fd[i][0];
                         if(sd == -1)
@@ -291,7 +304,7 @@ void compute_by_select(int n, int fd[][2])
                         {
                             printf("i is :%d \n", i);
                             read(sd, &my_value, sizeof(my_value));
-                            final_calculation();
+                            final_calculation(i);
 
                             fd[i][0] = -1;
 
@@ -325,12 +338,11 @@ void set_mechanism_flag(char flag[])
     printf("flag : %s\n", flag);
 }
 
-void final_calculation()
+void final_calculation(int i)
 {
     double x = atof(my_value);
-    printf("My Float : %.4f\n", x);
     e_x += x;
-    printf("updated e_x functin %.4lf \n", e_x);
+    printf("Worker: %d, My Float : %.4lf function %.4lf\n, my_value %s\n", i, x, e_x, my_value);
 }
 
 int max_array(int p[][2], int num_elements)
