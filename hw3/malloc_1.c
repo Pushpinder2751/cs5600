@@ -83,11 +83,107 @@ node_f* request_space_from_heap(node_f *head_node, size_t bin_size)
     return head_node;
 }
 
+void* malloc(size_t size)
+{
+    if(size <= 8)
+    {
+        if(!bin_8) // first call for 8 bytes
+        {
+            if(debug_flag)
+            {
+                printf("First call for 8 bytes\n");
+            }
+            bin_8 = request_space_from_heap(bin_8, 8);
+
+        }
+        void *space = (char*)bin_8 + META_SIZE;
+        bin_8->size = 8;
+        bin_8 = bin_8->next;
+        return space;
+    }
+    else if(size <=64)
+    {
+        if(!bin_64) // first call for 8 bytes
+        {
+            if(debug_flag)
+            {
+                printf("First call for 64 bytes\n");
+            }
+            bin_64 = request_space_from_heap(bin_64, 64);
+
+        }
+        void *space = (char*)bin_64 + META_SIZE;
+        bin_64->size = 64;
+        bin_64 = bin_64->next;
+        return space;
+    }
+    else if(size <=512)
+    {
+        if(!bin_512) // first call for 8 bytes
+        {
+            if(debug_flag)
+            {
+                printf("First call for 512 bytes\n");
+            }
+            bin_512 = request_space_from_heap(bin_512, 512);
+
+        }
+        void *space = (char*)bin_512 + META_SIZE;
+        bin_512->size = 512;
+        bin_512 = bin_512->next;
+        return space;
+    }
+}
+
+// since we need this at multiple places, a function is defined
+node_f* get_node_pointer(void* ptr)
+{
+    return (node_f*)((char*)ptr - META_SIZE);
+}
+
+void free(void *ptr)
+{
+    if(!ptr)
+        return;
+
+    // getting position of pointer
+    node_f* position_of_ptr = get_node_pointer(ptr);
+    // adding the pointer to the front
+    if(position_of_ptr->size == 8)
+    {
+        if(debug_flag)
+        {
+            printf("freeing 8 bytes of memory\n");
+        }
+        position_of_ptr->next = bin_8;
+        bin_8 = position_of_ptr;
+    }
+    else if(position_of_ptr->size == 64)
+    {
+        if(debug_flag)
+        {
+            printf("freeing 64 bytes of memory\n");
+        }
+        position_of_ptr->next = bin_64;
+        bin_64 = position_of_ptr;
+    }
+    else if(position_of_ptr->size == 512)
+    {
+        if(debug_flag)
+        {
+            printf("freeing 512 bytes of memory\n");
+        }
+        position_of_ptr->next = bin_512;
+        bin_512 = position_of_ptr;
+    }
+}
+
 
 void main(){
 
 
     printf("META_SIZE: %d\n", META_SIZE);
-
-    void *x = request_space_from_heap(bin_64, 64);
+    void* x = malloc(500);
+    free(x);
+    //void *x = request_space_from_heap(bin_64, 64);
 }
