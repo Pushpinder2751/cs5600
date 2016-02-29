@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <sys/mman.h>
 
 //set the debug_flag on or off to print the debug statements
 bool debug_flag = true;
@@ -133,6 +134,19 @@ void* malloc(size_t size)
         bin_512 = bin_512->next;
         return space;
     }
+    else
+    {
+
+        node_f *new_ptr = mmap(NULL, size, PROT_READ | PROT_WRITE , MAP_PRIVATE | MAP_ANONYMOUS , 0, 0);
+        if ( new_ptr == MAP_FAILED)
+        {
+            perror("mmap");
+            exit(EXIT_FAILURE);
+        }
+        void *space = (char*)new_ptr + META_SIZE;
+        new_ptr->size = size;
+        return space;
+    }
 }
 
 // since we need this at multiple places, a function is defined
@@ -141,6 +155,7 @@ node_f* get_node_pointer(void* ptr)
     return (node_f*)((char*)ptr - META_SIZE);
 }
 
+// freeing the pointer according to size of the bin
 void free(void *ptr)
 {
     if(!ptr)
@@ -176,6 +191,54 @@ void free(void *ptr)
         position_of_ptr->next = bin_512;
         bin_512 = position_of_ptr;
     }
+    else
+    {
+        if(debug_flag)
+        {
+            printf("freeing >512 bytes of memory\n");
+        }
+        //clearing all the metadata and the size was stored in
+        // the structure while creating
+        munmap(position_of_ptr, position_of_ptr->size);
+    }
+}
+
+// calloc clears the memory before returning the pointer
+
+void *calloc(size_t nmemb, size_t size)
+{
+    size_t total_size = nmemb * size;
+    // what is overflow and how can I check for it
+    void *ptr = malloc(total_size);
+    // initialize all the allocated bytes to zero
+    memset(ptr, 0, size);
+
+    return ptr;
+}
+
+void *realloc(void *ptr, size_t size)
+{
+    if(!ptr)
+    {
+        //NULL ptr. realloc should act like malloc
+        return malloc(size);
+    }
+
+    node_f* position_of_ptr = get_node_pointer(ptr);
+
+    if(position_of_ptr->size >= size)
+    {
+        // we have enough space. Not implementing splits as
+        // it will screw with the bins and and waste space
+        return ptr;
+    }
+
+    // if user asks for more space, then give more space,
+    // copy previous data and return the pointer to new space
+    void *new_ptr = malloc(size);
+    memcpy(new_ptr, ptr, position_of_ptr->size);
+    free(ptr);
+    return new_ptr;
 }
 
 
@@ -183,7 +246,7 @@ void main(){
 
 
     printf("META_SIZE: %d\n", META_SIZE);
-    void* x = malloc(500);
+    void* x = malloc(1000);
     free(x);
     //void *x = request_space_from_heap(bin_64, 64);
 }
