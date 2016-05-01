@@ -17,6 +17,7 @@ void interrupt_handler(int sig_num);
 
 	// This code hijacks the control from the main program
 	// for us to save it as a checkpoint
+	// this function is used to call functoins before the execution of main
 	__attribute__ ((constructor))
 	void myconstructor()
 	{

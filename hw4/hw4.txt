@@ -1,0 +1,200 @@
+PROCESSES :
+
+1.  Where is the data structure for the process table?
+
+ filename : proc.h
+ line no : 55
+ data structure :
+  struct proc {
+    uint sz;                     // Size of process memory (bytes)
+    pde_t* pgdir;                // Page table
+    char *kstack;                // Bottom of kernel stack for this process
+    enum procstate state;        // Process state
+    int pid;                     // Process ID
+    struct proc *parent;         // Parent process
+    struct trapframe *tf;        // Trap frame for current syscall
+    struct context *context;     // swtch() here to run process
+    void *chan;                  // If non-zero, sleeping on chan
+    int killed;                  // If non-zero, have been killed
+    struct file *ofile[NOFILE];  // Open files
+    struct inode *cwd;           // Current directory
+    char name[16];               // Process name (debugging)
+  };
+
+2.  When there is a context switch from one process to another, where are
+    the values of the registers of the old process saved?
+
+The register values are saved to the kernel stack. Contexts are generally storedat the bottom of the stack they describe; the stack pointer is the address of the context.
+
+filename : proc.h
+line number : 44
+data structure :
+struct context {
+    uint edi;
+    uint esi;
+    uint ebx;
+    uint ebp;
+    uint eip;
+  };
+
+3. What are the possible states of a process? Also, give a brief phrase describing the purpose of each state.
+
+  a. New State: The process being created.
+  b. Running State: A process is said to be running if it has the CPU, that is, process actually using the CPU at that particular instant.
+  c. Blocked (or waiting) State: A process is said to be blocked if it is waiting for some event to happen such that as an I/O completion before     it can proceed. Note that a process is unable to run until some external event happens.
+  d. Ready State: A process is said to be ready if it use a CPU if one were available. A ready state process is runable but temporarily stopped      running to let another process run.
+  e. Terminated state: The process has finished execution.
+
+4. What is the function that does a context switch between two
+   processes?
+
+function : void swtch(struct context **old, struct context *new);
+
+5. Explain how the context switch function works.
+
+ swtch:
+    movl 4(%esp), %eax
+    movl 8(%esp), %edx
+
+    # Save old callee-save registers
+       pushl %ebp
+       pushl %ebx
+       pushl %esi
+       pushl %edi
+
+    # Switch stacks
+       movl %esp, (%eax)
+       movl %edx, %esp
+
+    # Load new callee-save registers
+       popl %edi
+       popl %esi
+       popl %ebx
+       popl %ebp
+       ret
+
+6.  What function calls the context switch function, and explain in detail
+    what the calling function does.
+
+filename : proc.c
+line number : 266
+function : void scheduler(void)
+
+Scheduler never returns. It loops, doing:
+ - choose a process to run
+ - swtch to start running that process
+ - eventually that process transfers control
+   via swtch back to the scheduler.
+
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+PROCESS STARTUP :
+
+1.  Suppose a new program is going to start.  This requires a call to
+    the system call, exec().  On what lines does the operating system
+    create the first call frame, to be used by the user process's main()?
+
+lines : 58 - 62
+
+2.  The first call frame must have local variables argc and argv.
+    Where is the value of argv found in the call frame that is created?
+
+filename : exec.c
+line number : 77
+data structre : ustack[2]
+
+3.  On what lines does the function create the process table entry
+    for the new process?
+
+lines : 90 - 97
+
+4.  The exec() function seems to assume that there is already a new
+    entry available in the process table.  How was this entry for
+    a new process chosen (allocated)?
+
+When you call fork, the process table is updated with a copy of the calling process' entry in the table.
+
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+SYSTEM CALLS:
+
+1. Give the full details of how a call to 'open()' in grep.c will
+   call the function 'sys_open()' in sysfile.c, inside the operating
+   system kernel.
+
+Solution:
+# User code makes a system call with INT T_SYSCALL
+# System call number in %eax (defined in usys.S)
+# SYS_open is mapped to sys_open in syscall.c
+# Finally sys_open is called inside sysfile.c
+
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+FILES AND FILE DESCRIPTORS
+
+1.  The function 'sys_open()' returns a file descriptor 'fd'.
+    To do this, it opens a new file (new i-node) with 'filealloc()',
+    and it allocates a new file descriptor with 'fdalloc()'.
+    Where is the file descriptor allocated?  Also, you will see that
+    the file descriptor is one entry in an array.  What is the algorithm
+    used to choose which entry in the array to use for the new file descriptor?
+
+filename : sysfile.c
+line number : 315
+function name : sys_open(void)
+algorithm : linear search //if(proc->ofile[fd] == 0){
+
+2.  As you saw above, the file descriptor turned out to be an index
+    in an array.  What is the name of the array for which the file
+    descriptor is an index?  Also, what is the type of one entry in
+    that array.
+
+name of array : ofile
+type : struct file
+
+3.  The type that you saw in the above question is what I was calling
+    a "file handle" (with an offset into the file, etc.).
+    What is the name of the field that holds the offset into the file?
+    We saw it in the function 'sys_open()'.
+
+field name : off
+
+4.  Remember when we mentioned a call to 'filealloc()' above?
+    Since the return value of 'filealloc()' is only a file handle,
+    we need to initialize it.  Presumably, we will initialize it with
+    a file offset of 0.  What is the line number in 'sys_open()' where
+    we initialize the file offset to 0?
+
+line number : 327
+
+5.  The file handle type was initialized to 'FD_INODE'.  What are the
+    other types that it could have been initialized to?
+
+other types : FD_PIPE and FD_NODE
+
+6.  Suppose a file handle had been initialized to FD_PIPE.  Find the
+    'struct' that hold sthe information about a pipe.  For each field
+    in that struct, Explain briefly (just a phrase) the purpose of that
+    field.
+
+#define PIPESIZE 512;
+
+struct pipe {
+  struct spinlock lock; // checks whether lock is held ?
+  char data[PIPESIZE]; // stores data
+  uint nread;     // number of bytes read
+  uint nwrite;    // number of bytes written
+  int readopen;   // read fd is still open
+  int writeopen;  // write fd is still open
+  };
+
+7.  By examining the function 'sys_dup()', you can discover how a
+    system call to 'dup()' will manipulate both a file descriptor
+    and a "file handle".  Describe what it does in each of the
+    two cases.
+
+First acquire the lock on ftable.
+Then, increase the ref count for file handle.
+Finally, release the lock from ftable.
+
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
